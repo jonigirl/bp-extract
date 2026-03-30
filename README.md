@@ -292,6 +292,19 @@ Edit `config.json` - decrease `poll_interval` for faster detection (0.1 = very r
 - **v0.2.0** - Web interface with Flask dashboard
 - **v0.1.0** - Initial CLI-only version
 
+## 🙏 Credits & Acknowledgments
+
+**Original Concept**: This project was inspired by `blueprint_extractor` created by **infectoid (fec)**, a fellow member of our Star Citizen organization.
+
+The core log parsing and blueprint detection logic built upon their original work. BP Extract extends this concept with:
+- Modern web interface with real-time dashboard
+- Cross-platform support (Windows/macOS/Linux)
+- JSON-based storage with automatic migration
+- Interactive setup wizard with auto-detection
+- Search, filter, and statistics features
+
+Special thanks to infectoid for the original blueprint extraction concept and for sharing it with the org!
+
 ## 🤝 Contributing
 
 Suggestions and contributions welcome! Feel free to:
