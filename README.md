@@ -54,7 +54,7 @@ python app.py
 
 ```bash
 # Clone or download this repository
-git clone https://github.com/yourusername/bp-extract.git
+git clone https://github.com/jonigirl/bp-extract.git
 cd bp-extract
 ```
 
