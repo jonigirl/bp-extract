@@ -4,15 +4,15 @@ import csv
 import json
 import os
 import re
+import threading
 import time
-from pathlib import Path
 
 PATTERN = re.compile(r'<([^>]+)>.*Received Blueprint:\s*(.*?):\s*"')
-YES_CHOICES = {"y", "yes"}
-NO_CHOICES = {"n", "no"}
 
 # Deprecated - kept for CSV migration only
 DEFAULT_CSV_FILE = "blueprints.csv"
+
+_write_lock = threading.Lock()
 
 
 # ============================================================================
@@ -66,17 +66,18 @@ def get_blueprints_from_json(data_file: str) -> list:
 
 def append_blueprint(blueprint_name: str, timestamp: str, data_file: str) -> None:
     """Append a new blueprint entry to the JSON file."""
-    data = load_blueprints_data(data_file)
+    with _write_lock:
+        data = load_blueprints_data(data_file)
 
-    # Check if blueprint already exists
-    for bp in data["blueprints"]:
-        if bp["name"] == blueprint_name:
-            # Already exists, don't add duplicate
-            return
+        # Check if blueprint already exists
+        for bp in data["blueprints"]:
+            if bp["name"] == blueprint_name:
+                # Already exists, don't add duplicate
+                return
 
-    # Add new blueprint
-    data["blueprints"].append({"name": blueprint_name, "timestamp": timestamp})
-    save_blueprints_data(data_file, data)
+        # Add new blueprint
+        data["blueprints"].append({"name": blueprint_name, "timestamp": timestamp})
+        save_blueprints_data(data_file, data)
 
 
 # ============================================================================
@@ -123,7 +124,9 @@ def migrate_csv_to_json(csv_file: str, data_file: str) -> bool:
 # ============================================================================
 
 
-def process_blueprint(line: str, known_blueprints: set, data_file: str, source: str = "") -> bool:
+def process_blueprint(
+    line: str, known_blueprints: set, data_file: str, source: str = ""
+) -> bool:
     """Extract and process a blueprint from a log line if it's new.
 
     Returns: True if a new blueprint was processed, False otherwise.
@@ -157,9 +160,7 @@ def get_file_id(path: str):
         return None
 
 
-def scan_backups(
-    backup_dir: str, data_file: str, log_file: str = None
-) -> set:
+def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
     """Scan backup log files for blueprints."""
     if not os.path.exists(backup_dir):
         print(f"Backup directory not found: {backup_dir}")
@@ -178,7 +179,9 @@ def scan_backups(
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 for line in f:
-                    process_blueprint(line, known_blueprints, data_file, f"from backup {filename}")
+                    process_blueprint(
+                        line, known_blueprints, data_file, f"from backup {filename}"
+                    )
         except (OSError, IOError) as e:
             print(f"Error reading {filename}: {e}")
 
@@ -191,8 +194,8 @@ def tail_log(
     poll_interval: float = 0.5,
     wait_interval: float = 1.0,
     known_blueprints: set = None,
-    should_pause_fn = None,
-    stop_event = None,
+    should_pause_fn=None,
+    stop_event=None,
 ) -> None:
     """Monitor a log file for new blueprints continuously.
 

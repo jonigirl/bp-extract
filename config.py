@@ -13,8 +13,9 @@ import os
 import platform
 from pathlib import Path
 
-CONFIG_FILE = "config.json"
-DATA_FILE = "blueprints.json"
+_BASE_DIR = Path(__file__).parent
+CONFIG_FILE = str(_BASE_DIR / "config.json")
+DATA_FILE = str(_BASE_DIR / "blueprints.json")
 
 
 class Config:
