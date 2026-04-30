@@ -23,6 +23,11 @@ REPOSITORY.md
 *.swo
 *~
 
+# Test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
 # OS
 .DS_Store
 Thumbs.db
