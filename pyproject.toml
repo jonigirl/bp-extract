@@ -1,6 +1,6 @@
 [project]
 name = "bp-extract"
-version = "0.4.4"
+version = "0.4.5"
 description = "Star Citizen Blueprint Acquisition Tracker with Web Interface"
 readme = "README.md"
 requires-python = ">=3.12"
