@@ -17,36 +17,46 @@ A modern, cross-platform web application that monitors your Star Citizen game lo
 
 ## 🎯 Quick Start
 
-### Windows Users (Easiest)
+### Windows
 
-1. Open the BP Extract folder
+1. Download the source zip from the [Releases page](https://github.com/jonigirl/bp-extract/releases) and extract it
 2. Double-click **`launch.bat`**
-3. Your browser automatically opens to the dashboard
-4. That's it! The app will guide you through setup
+3. Your browser opens automatically
+4. The app will guide you through setup
 
-### macOS & Linux Users
+`launch.bat` automatically finds Python using whichever method you have:
 
-1. Open terminal in the BP Extract folder
-2. Run: `python3 launch.py`
-3. Browser opens automatically
-4. Follow the setup wizard
+- **uv** on PATH → runs via `uv run`
+- **`.venv` / `venv` folder** present → activates it
+- **System Python** → uses `python` or `python3` on PATH
 
-### Manual Web Mode
+Dependencies (Flask etc.) are installed automatically if not already present.
+
+### macOS & Linux
+
+1. Download and extract the source zip from the [Releases page](https://github.com/jonigirl/bp-extract/releases)
+2. Open a terminal in the BP Extract folder
+3. Install dependencies (one-time): `uv sync` or `pip install flask`
+4. Run: `python3 launch.py`
+5. Browser opens automatically — follow the setup wizard
+
+### Manual / Advanced
 
 ```bash
 # Install dependencies (one-time)
 uv sync
+# or: pip install flask
 
-# Run the web interface
-python app.py
-
-# Open in browser: http://localhost:5000
+# Run the launcher (opens browser automatically)
+python launch.py
 ```
 
 ## 📋 System Requirements
 
-- **Python**: 3.12 or higher (downloads at https://www.python.org)
+- **Python**: 3.12 or higher — https://www.python.org/
 - **Star Citizen**: Installed and playable
+
+uv is optional but recommended — https://docs.astral.sh/uv/
 
 ## 🔧 Installation
 
