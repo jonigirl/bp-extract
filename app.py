@@ -105,16 +105,29 @@ def start_monitoring():
     _stop_event = threading.Event()
     stop_event = _stop_event  # captured by closure
 
+    # Snapshot file paths at start time so the thread isn't affected by
+    # later changes to the module-level globals (e.g. during tests).
+    data_file = DATA_FILE
+    log_file = LOG_FILE
+
+    if not isinstance(data_file, (str, os.PathLike)) or not isinstance(
+        log_file, (str, os.PathLike)
+    ):
+        logger.warning(
+            "start_monitoring skipped: LOG_FILE or DATA_FILE is not a valid path"
+        )
+        return None
+
     def on_new():
         global last_updated
         with lock:
             last_updated = datetime.now().isoformat()
 
     def monitor():
-        known_blueprints = load_existing_blueprints(DATA_FILE)
+        known_blueprints = load_existing_blueprints(data_file)
         tail_log(
-            LOG_FILE,
-            DATA_FILE,
+            log_file,
+            data_file,
             poll_interval=POLL_INTERVAL,
             wait_interval=WAIT_INTERVAL,
             known_blueprints=known_blueprints,

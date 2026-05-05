@@ -22,6 +22,8 @@ def client(tmp_path):
     app_module.BACKUP_DIR = str(tmp_path / "logbackups")
     app_module._pause_event.clear()
     app_module._scanning_event.clear()
+    if app_module.config is not None:
+        app_module.config.set("first_run", False)
     with app.test_client() as c:
         yield c
     app_module._pause_event.clear()
@@ -248,6 +250,7 @@ class TestSetupRoute:
     def test_post_setup_saves_and_redirects(self, client, monkeypatch):
         mock_cfg = MagicMock()
         monkeypatch.setattr(app_module, "config", mock_cfg)
+        monkeypatch.setattr(app_module, "start_monitoring", lambda: None)
         response = client.post(
             "/setup",
             data={

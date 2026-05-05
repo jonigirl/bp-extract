@@ -11,6 +11,7 @@ dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--capture=sys"
 
 [dependency-groups]
 dev = [
