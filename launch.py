@@ -91,7 +91,7 @@ def _run_flask(port: int) -> None:
     """Import and run the Flask app in-process."""
     from app import run_server
 
-    run_server(port)
+    run_server(port, browser_watchdog=True)
 
 
 def main():

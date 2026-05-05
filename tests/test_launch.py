@@ -25,7 +25,7 @@ class TestRunFlask:
     def test_calls_run_server_with_port(self):
         with patch("app.run_server") as mock_run_server:
             launch._run_flask(5001)
-        mock_run_server.assert_called_once_with(5001)
+        mock_run_server.assert_called_once_with(5001, browser_watchdog=True)
 
 
 class TestCheckPythonVersion:
