@@ -250,6 +250,7 @@ class TestSetupRoute:
     def test_post_setup_saves_and_redirects(self, client, monkeypatch):
         mock_cfg = MagicMock()
         monkeypatch.setattr(app_module, "config", mock_cfg)
+        monkeypatch.setattr(app_module, "start_monitoring", lambda: None)
         response = client.post(
             "/setup",
             data={
