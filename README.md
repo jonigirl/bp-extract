@@ -73,13 +73,7 @@ source .venv/bin/activate
 ### 3. Install Dependencies
 
 ```bash
-pip install Flask
-```
-
-Or use the bundled file:
-
-```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ## 🚀 Usage
@@ -87,11 +81,13 @@ pip install -r requirements.txt
 ### Web Interface (Recommended)
 
 **First Run:**
+
 - The setup wizard will auto-detect your Star Citizen installation
 - If auto-detection fails, you can enter paths manually
 - Existing CSV data will be automatically migrated to JSON
 
 **Dashboard Features:**
+
 - View all blueprints with acquisition timestamps
 - Search by blueprint name (live filtering)
 - Sort by name or acquisition time
@@ -148,6 +144,7 @@ Blueprints are now stored in modern JSON format (`blueprints.json`):
 ```
 
 **Benefits over CSV:**
+
 - Human-readable and context-aware
 - Extensible for future features
 - Faster JSON parsing
@@ -158,6 +155,7 @@ Blueprints are now stored in modern JSON format (`blueprints.json`):
 ### First-Run Setup
 
 The setup wizard will:
+
 1. Detect your OS (Windows/macOS/Linux)
 2. Search for Star Citizen installation
 3. Auto-fill game log path if found
@@ -202,16 +200,19 @@ python app.py
 BP Extract auto-detects your system and Star Citizen installation:
 
 **Windows Locations Checked:**
+
 - `C:\Program Files\Roberts Space Industries\StarCitizen\LIVE`
 - `E:\Roberts Space Industries\StarCitizen\LIVE` (common alternate drive)
 - `D:\Roberts Space Industries\StarCitizen\LIVE`
 - `C:\Games\StarCitizen\LIVE`
 
 **macOS Locations Checked:**
+
 - `~/Library/Application Support/Star Citizen`
 - `~/Games/StarCitizen`
 
 **Linux Locations Checked:**
+
 - `~/.local/share/StarCitizen` (native)
 - `~/.wine/drive_c/Roberts Space Industries/StarCitizen` (Wine/Proton)
 - `~/Games/StarCitizen`
@@ -221,6 +222,7 @@ If auto-detection doesn't find your installation, the setup wizard lets you ente
 ## 🔀 CSV to JSON Migration
 
 If you have existing Blueprint data in `blueprints.csv`:
+
 - The setup wizard automatically detects it
 - Offers to migrate all data to `blueprints.json`
 - Backs up original as `blueprints.csv.backup`
@@ -229,39 +231,48 @@ If you have existing Blueprint data in `blueprints.csv`:
 ## 📤 Export Data
 
 ### CSV Export
+
 Export blueprints as CSV for Excel:
+
 - Dashboard: API endpoint at `/api/export/csv`
 - CLI: Manual export from `blueprints.json`
 
 ### Direct JSON Access
+
 Blueprints are stored in `blueprints.json` for easy access or backup.
 
 ## 🐛 Troubleshooting
 
 ### "Python 3.12 required"
+
 - Download Python 3.12+ from https://www.python.org
 - Ensure Python is in your PATH
 - Restart your terminal after installation
 
 ### "Star Citizen installation not found"
+
 - Ensure Star Citizen is installed and has been run at least once
 - Use the setup wizard to manually enter your installation path
 - Check the path contains both `Game.log` and `logbackups` folders
 
 ### "Flask not installed"
+
 Run: `pip install Flask`
 
 ### "Port 5000 already in use"
+
 - Another application is using port 5000
 - Close the conflicting application, or
 - The launcher will automatically find another available port
 
 ### Blueprint detection not working
+
 - Ensure Star Citizen has run and generated `Game.log`
 - Check the log file format matches your SC version
 - Try closing and reopening the game to generate new log entries
 
 ### macOS/Linux Issues
+
 - Use `python3` instead of `python` if needed
 - Ensure SC is running through Proton/Wine
 - Check file paths use forward slashes `/` not backslashes
@@ -269,12 +280,15 @@ Run: `pip install Flask`
 ## 🎨 Customization
 
 ### Edit Web Dashboard
+
 Modify `templates/index.html` and `static/style.css` to customize the interface.
 
 ### Add Features
+
 Extend `app.py` to add new API routes or functionality.
 
 ### Change Monitoring Interval
+
 Edit `config.json` - decrease `poll_interval` for faster detection (0.1 = very responsive, 1.0 = slower but less CPU).
 
 ## 📊 Performance
@@ -297,6 +311,7 @@ Edit `config.json` - decrease `poll_interval` for faster detection (0.1 = very r
 **Original Concept**: This project was inspired by `blueprint_extractor` created by **infectoid (fec)**, a fellow member of our Star Citizen organization.
 
 The core log parsing and blueprint detection logic built upon their original work. BP Extract extends this concept with:
+
 - Modern web interface with real-time dashboard
 - Cross-platform support (Windows/macOS/Linux)
 - JSON-based storage with automatic migration
@@ -308,6 +323,7 @@ Special thanks to infectoid for the original blueprint extraction concept and fo
 ## 🤝 Contributing
 
 Suggestions and contributions welcome! Feel free to:
+
 - Report bugs
 - Request features
 - Submit improvements
@@ -330,6 +346,7 @@ If you encounter issues:
 ## 🔧 Technical Details
 
 ### Architecture
+
 - **Backend:** Flask (lightweight Python web framework)
 - **Frontend:** HTML5 + CSS3 + Vanilla JavaScript (no build process)
 - **Storage:** JSON files (local, no database)
@@ -337,6 +354,7 @@ If you encounter issues:
 - **Configuration:** Auto-detection + JSON config file
 
 ### No External Dependencies (besides Flask)
+
 - Pure Python standard library for file operations
 - No database server required
 - No cloud connectivity
