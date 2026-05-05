@@ -35,7 +35,7 @@ A modern, cross-platform web application that monitors your Star Citizen game lo
 
 ```bash
 # Install dependencies (one-time)
-pip install Flask
+uv sync
 
 # Run the web interface
 python app.py
@@ -76,12 +76,6 @@ source .venv/bin/activate
 uv sync
 ```
 
-## 🚀 Usage
-
-### Web Interface (Recommended)
-
-**First Run:**
-
 - The setup wizard will auto-detect your Star Citizen installation
 - If auto-detection fails, you can enter paths manually
 - Existing CSV data will be automatically migrated to JSON
@@ -100,7 +94,6 @@ uv sync
 
 ```bash
 python main.py              # Interactive mode (prompts to scan backups)
-python main.py --no-scan   # Start monitoring immediately
 ```
 
 ## 📁 Project Structure
@@ -114,14 +107,20 @@ BP Extract/
 ├── setup_wizard.py        # First-run configuration wizard
 ├── launch.py              # Cross-platform launcher
 ├── launch.bat             # Windows batch launcher
+├── pyproject.toml         # Project metadata & dependencies
 ├── templates/
 │   └── index.html         # Web dashboard HTML
 ├── static/
 │   └── style.css          # Dashboard styling
-├── config.json            # Configuration (auto-created)
-├── blueprints.json        # Blueprint data (replaces CSV)
-├── blueprints.csv.backup  # Backup of original CSV (if migrated)
-└── requirements.txt       # Python dependencies
+├── tests/
+│   ├── test_app.py        # Web server tests
+│   ├── test_config.py     # Configuration tests
+│   ├── test_core.py       # Core logic tests
+│   ├── test_launch.py     # Launcher tests
+│   ├── test_main.py       # CLI tests
+│   └── test_setup_wizard.py  # Setup wizard tests
+├── config.json            # Configuration (auto-created, gitignored)
+└── blueprints.json        # Blueprint data (auto-created, gitignored)
 ```
 
 ## 🗂️ Data Format
@@ -195,6 +194,16 @@ export SC_BACKUP_DIR="/path/to/logbackups"
 python app.py
 ```
 
+### Web Server Variables
+
+```bash
+# Override the Flask session secret (recommended for shared installs)
+$env:SECRET_KEY = "your-secret-here"
+
+# Override the port the web server listens on (default: auto-detect from 5000)
+$env:BP_EXTRACT_PORT = "5001"
+```
+
 ## 🔄 Portability
 
 BP Extract auto-detects your system and Star Citizen installation:
@@ -257,7 +266,7 @@ Blueprints are stored in `blueprints.json` for easy access or backup.
 
 ### "Flask not installed"
 
-Run: `pip install Flask`
+Run: `uv sync`
 
 ### "Port 5000 already in use"
 
@@ -302,9 +311,17 @@ Edit `config.json` - decrease `poll_interval` for faster detection (0.1 = very r
 
 ## 📝 Version History
 
+- **v0.4.0** - Release packaging, APPDATA config storage, in-process launcher, first-run web wizard, settings panel, GitHub Actions CI/CD
 - **v0.3.0** - JSON migration, cross-platform auto-detection, setup wizard
 - **v0.2.0** - Web interface with Flask dashboard
 - **v0.1.0** - Initial CLI-only version
+
+## 🗺️ Roadmap
+
+**v2.0 (planned)**
+
+- Native window via [pywebview](https://pywebview.flowrl.com/) — no external browser required
+- System tray integration via [pystray](https://github.com/moses-palmer/pystray) — run in background with tray icon and config toggle
 
 ## 🙏 Credits & Acknowledgments
 

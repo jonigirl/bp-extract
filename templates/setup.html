@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BP Extract — First Run Setup</title>
+    <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/opendyslexic" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <style>
+      .setup-container {
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+
+      .setup-header {
+        background: linear-gradient(
+          135deg,
+          var(--secondary-color) 0%,
+          var(--primary-color) 100%
+        );
+        border-radius: 12px;
+        padding: 32px 28px;
+        margin-bottom: 28px;
+        box-shadow: var(--shadow);
+      }
+
+      .setup-header h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+        font-family: "OpenDyslexic", sans-serif;
+      }
+
+      .setup-header p {
+        font-size: 0.88rem;
+        line-height: 1.75;
+        color: rgba(255, 255, 255, 0.9);
+        font-family: "OpenDyslexic", sans-serif;
+      }
+
+      .step-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 8px;
+        font-family: "OpenDyslexic", sans-serif;
+      }
+
+      .setup-card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 28px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow);
+      }
+
+      .setup-card h2 {
+        font-size: 18px;
+        margin-bottom: 20px;
+        color: var(--text-primary);
+        font-family: "OpenDyslexic", sans-serif;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .field-group {
+        margin-bottom: 22px;
+      }
+
+      .field-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .field-group label {
+        display: block;
+        font-size: 0.82rem;
+        font-family: "OpenDyslexic", sans-serif;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+      }
+
+      .field-group input[type="text"] {
+        width: 100%;
+        padding: 12px 16px;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: "OpenDyslexic", sans-serif;
+        line-height: 1.65;
+        transition: border-color 0.3s ease;
+      }
+
+      .field-group input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
+      }
+
+      .field-hint {
+        font-size: 0.82rem;
+        font-family: "OpenDyslexic", sans-serif;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-top: 5px;
+      }
+
+      .btn-setup {
+        display: inline-block;
+        width: 100%;
+        padding: 14px 20px;
+        background-color: var(--primary-color);
+        color: #fff;
+        border: none;
+        border-radius: 2px;
+        font-size: 1rem;
+        font-family: "OpenDyslexic", sans-serif;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background-color 0.3s ease,
+          box-shadow 0.3s ease;
+        text-align: center;
+      }
+
+      .btn-setup:hover {
+        background-color: var(--primary-dark);
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+      }
+
+      .confirm-note {
+        font-size: 0.82rem;
+        font-family: "OpenDyslexic", sans-serif;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-top: 14px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="setup-container">
+      <form method="POST" action="/setup">
+        <!-- Step 1: Welcome -->
+        <div class="setup-header">
+          <div class="step-label">Step 1 of 3 — Welcome</div>
+          <h1>📋 Welcome to BP Extract</h1>
+          <p>
+            Let's set up BP Extract for your Star Citizen installation. The
+            paths below have been auto-detected — confirm or change them before
+            continuing.
+          </p>
+        </div>
+
+        <!-- Step 2: Path Configuration -->
+        <div class="setup-card">
+          <h2>Step 2 — Path Configuration</h2>
+
+          <div class="field-group">
+            <label for="log_file">Game Log File</label>
+            <input
+              type="text"
+              id="log_file"
+              name="log_file"
+              value="{{ detected.log_file }}"
+              autocomplete="off"
+            />
+            <p class="field-hint">Path to your Star Citizen Game.log file</p>
+          </div>
+
+          <div class="field-group">
+            <label for="backup_dir">Backup Directory</label>
+            <input
+              type="text"
+              id="backup_dir"
+              name="backup_dir"
+              value="{{ detected.backup_dir }}"
+              autocomplete="off"
+            />
+            <p class="field-hint">
+              Path to the logbackups folder inside your Star Citizen LIVE
+              directory
+            </p>
+          </div>
+
+          <div class="field-group">
+            <label for="data_file">Data File</label>
+            <input
+              type="text"
+              id="data_file"
+              name="data_file"
+              value="{{ detected.data_file }}"
+              autocomplete="off"
+            />
+            <p class="field-hint">
+              Where BP Extract stores your blueprint collection (JSON)
+            </p>
+          </div>
+        </div>
+
+        <!-- Step 3: Confirm -->
+        <div class="setup-card">
+          <h2>Step 3 — Confirm</h2>
+
+          <button type="submit" class="btn-setup">Start BP Extract</button>
+          <p class="confirm-note">
+            You can change these paths later from the Settings panel.
+          </p>
+        </div>
+      </form>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>BP Extract v{{ version }}</p>
+      </footer>
+    </div>
+  </body>
+</html>

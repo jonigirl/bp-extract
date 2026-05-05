@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,6 +10,8 @@ SAMPLE_BLUEPRINTS = [
     {"name": "Alpha Blueprint", "timestamp": "2024-01-02T11:00:00"},
     {"name": "Mu Blueprint", "timestamp": "2024-01-03T12:00:00"},
 ]
+
+XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
 
 @pytest.fixture
@@ -103,13 +105,7 @@ class TestBlueprintsEndpoint:
 
 class TestStatsEndpoint:
     def test_returns_200_with_expected_keys(self, client):
-        with (
-            patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS),
-            patch(
-                "app.load_existing_blueprints",
-                return_value={"Zeta Blueprint", "Alpha Blueprint", "Mu Blueprint"},
-            ),
-        ):
+        with patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS):
             response = client.get("/api/stats")
         assert response.status_code == 200
         data = response.get_json()
@@ -118,35 +114,40 @@ class TestStatsEndpoint:
         assert "monitoring_paused" in data
         assert "is_scanning" in data
 
-    def test_total_count_matches_known_blueprints(self, client):
-        with (
-            patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS),
-            patch("app.load_existing_blueprints", return_value={"A", "B"}),
-        ):
+    def test_total_count_matches_blueprints_list(self, client):
+        with patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS):
             response = client.get("/api/stats")
-        assert response.get_json()["total_count"] == 2
+        assert response.get_json()["total_count"] == len(SAMPLE_BLUEPRINTS)
 
 
 class TestPauseResumeEndpoints:
     def test_pause_returns_200(self, client):
-        response = client.post("/api/pause")
+        response = client.post("/api/pause", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "paused" in response.get_json()["status"].lower()
 
     def test_pause_sets_pause_event(self, client):
-        client.post("/api/pause")
+        client.post("/api/pause", headers=XHR_HEADERS)
         assert app_module._pause_event.is_set()
+
+    def test_pause_rejected_without_xhr_header(self, client):
+        response = client.post("/api/pause")
+        assert response.status_code == 403
 
     def test_resume_returns_200(self, client):
         app_module._pause_event.set()
-        response = client.post("/api/resume")
+        response = client.post("/api/resume", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "resumed" in response.get_json()["status"].lower()
 
     def test_resume_clears_pause_event(self, client):
         app_module._pause_event.set()
-        client.post("/api/resume")
+        client.post("/api/resume", headers=XHR_HEADERS)
         assert not app_module._pause_event.is_set()
+
+    def test_resume_rejected_without_xhr_header(self, client):
+        response = client.post("/api/resume")
+        assert response.status_code == 403
 
 
 class TestStatusEndpoint:
@@ -170,15 +171,19 @@ class TestStatusEndpoint:
 class TestScanBackupsEndpoint:
     def test_returns_200_and_starts_scan(self, client):
         with patch("app.scan_backups"):
-            response = client.post("/api/scan-backups")
+            response = client.post("/api/scan-backups", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "status" in response.get_json()
 
     def test_returns_400_when_scan_already_running(self, client):
         app_module._scanning_event.set()
-        response = client.post("/api/scan-backups")
+        response = client.post("/api/scan-backups", headers=XHR_HEADERS)
         assert response.status_code == 400
         assert "error" in response.get_json()
+
+    def test_scan_rejected_without_xhr_header(self, client):
+        response = client.post("/api/scan-backups")
+        assert response.status_code == 403
 
 
 class TestExportCsvEndpoint:
@@ -204,3 +209,111 @@ class TestErrorHandlers:
         assert response.status_code == 404
         data = response.get_json()
         assert "error" in data
+
+
+class TestSetupRoute:
+    def test_get_redirects_to_setup_on_first_run(self, client, monkeypatch):
+        mock_cfg = MagicMock()
+        mock_cfg.is_first_run.return_value = True
+        mock_cfg.get.side_effect = lambda k, *a: {
+            "log_file": "/fake/Game.log",
+            "backup_dir": "/fake/backups",
+            "data_file": "blueprints.json",
+        }.get(k, a[0] if a else None)
+        monkeypatch.setattr(app_module, "config", mock_cfg)
+        response = client.get("/")
+        assert response.status_code == 302
+        assert "/setup" in response.headers["Location"]
+
+    def test_get_setup_returns_200(self, client, monkeypatch):
+        mock_cfg = MagicMock()
+        mock_cfg.is_first_run.return_value = True
+        mock_cfg.get.side_effect = lambda k, *a: {
+            "log_file": "/fake/Game.log",
+            "backup_dir": "/fake/backups",
+            "data_file": "blueprints.json",
+        }.get(k, a[0] if a else None)
+        monkeypatch.setattr(app_module, "config", mock_cfg)
+        response = client.get("/setup")
+        assert response.status_code == 200
+
+    def test_setup_redirects_to_index_after_not_first_run(self, client, monkeypatch):
+        mock_cfg = MagicMock()
+        mock_cfg.is_first_run.return_value = False
+        monkeypatch.setattr(app_module, "config", mock_cfg)
+        response = client.get("/setup")
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/")
+
+    def test_post_setup_saves_and_redirects(self, client, monkeypatch):
+        mock_cfg = MagicMock()
+        monkeypatch.setattr(app_module, "config", mock_cfg)
+        response = client.post(
+            "/setup",
+            data={
+                "log_file": "/new/Game.log",
+                "backup_dir": "/new/backups",
+                "data_file": "new.json",
+            },
+            headers={"Host": "127.0.0.1:5000"},
+        )
+        assert response.status_code == 302
+        mock_cfg.set.assert_any_call("log_file", "/new/Game.log")
+        mock_cfg.save.assert_called_once()
+
+    def test_post_setup_rejects_non_local_host(self, client):
+        response = client.post(
+            "/setup",
+            data={"log_file": "/x"},
+            headers={"Host": "evil.example.com"},
+        )
+        assert response.status_code == 403
+
+
+class TestSettingsEndpoint:
+    def test_get_settings_returns_200(self, client):
+        response = client.get("/api/settings")
+        assert response.status_code == 200
+
+    def test_get_settings_contains_expected_keys(self, client):
+        response = client.get("/api/settings")
+        data = response.get_json()
+        assert "ui_mode" in data
+        assert "log_file" in data
+        assert "backup_dir" in data
+        assert "poll_interval" in data
+
+    def test_post_settings_requires_xhr(self, client):
+        response = client.post("/api/settings", json={"ui_mode": "browser"})
+        assert response.status_code == 403
+
+    def test_post_settings_updates_ui_mode(self, client, monkeypatch):
+        mock_cfg = MagicMock()
+        mock_cfg.get.side_effect = lambda k, *a: (
+            "browser" if k == "ui_mode" else a[0] if a else None
+        )
+        monkeypatch.setattr(app_module, "config", mock_cfg)
+        response = client.post(
+            "/api/settings",
+            json={"ui_mode": "tray"},
+            headers=XHR_HEADERS,
+        )
+        assert response.status_code == 200
+        mock_cfg.set.assert_any_call("ui_mode", "tray")
+        mock_cfg.save.assert_called_once()
+
+    def test_post_settings_rejects_invalid_ui_mode(self, client):
+        response = client.post(
+            "/api/settings",
+            json={"ui_mode": "invalid"},
+            headers=XHR_HEADERS,
+        )
+        assert response.status_code == 400
+
+    def test_post_settings_rejects_invalid_poll_interval(self, client):
+        response = client.post(
+            "/api/settings",
+            json={"poll_interval": 999},
+            headers=XHR_HEADERS,
+        )
+        assert response.status_code == 400

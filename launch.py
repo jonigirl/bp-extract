@@ -6,9 +6,10 @@ This script launches the Flask application and opens it in the default browser.
 Works on Windows, macOS, and Linux.
 """
 
+import multiprocessing
 import os
-import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from pathlib import Path
@@ -30,36 +31,20 @@ def find_virtual_env():
     return None
 
 
-def activate_virtual_env(venv_path):
-    """Print instructions for activating virtual environment."""
-    if sys.platform == "win32":
-        activate_script = str(venv_path / "Scripts" / "activate.bat")
-        print(f"To manually activate: {activate_script}")
-    else:
-        activate_script = str(venv_path / "bin" / "activate")
-        print(f"To manually activate: source {activate_script}")
-
-
-def check_and_install_flask():
-    """Check if Flask is installed, install if necessary."""
-    try:
-        import flask
-
-        print(f"✓ Flask is installed (version {flask.__version__})")
+def check_flask_installed():
+    """Check if Flask is installed."""
+    if getattr(sys, "frozen", False):
         return True
-    except ImportError:
-        print("Flask not found. Attempting to install...")
-        try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "Flask"],
-                stdout=subprocess.DEVNULL,
-            )
-            print("✓ Flask installed successfully")
-            return True
-        except subprocess.CalledProcessError:
-            print("✗ Failed to install Flask")
-            print("  Try running manually: pip install Flask")
-            return False
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        ver = version("flask")
+        print(f"✓ Flask is installed (version {ver})")
+        return True
+    except PackageNotFoundError:
+        print("✗ Flask not found.")
+        print("  Install dependencies first: uv sync  (or: pip install flask)")
+        return False
 
 
 def find_free_port(host="127.0.0.1", start_port=5000):
@@ -79,84 +64,91 @@ def find_free_port(host="127.0.0.1", start_port=5000):
     return None
 
 
+def get_base_dir() -> Path:
+    """Return base directory — sys._MEIPASS when frozen, else script dir."""
+    import sys
+
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).parent
+
+
+def wait_for_port(host: str, port: int, timeout: float = 10.0) -> bool:
+    """Wait until the given port is accepting connections. Returns True if ready."""
+    import socket
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.1):
+                return True
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.1)
+    return False
+
+
+def _run_flask(port: int) -> None:
+    """Import and run the Flask app in-process."""
+    from app import run_server
+
+    run_server(port)
+
+
 def main():
-    """Main launcher function."""
     print("\n" + "=" * 60)
     print("BP Extract - Blueprint Tracker Web Interface")
     print("=" * 60 + "\n")
 
-    # Check Python version
-    print("Checking Python version...")
     check_python_version()
     print(f"✓ Python {sys.version.split()[0]} is compatible\n")
 
-    # Check for virtual environment
-    print("Checking for virtual environment...")
     venv = find_virtual_env()
     if venv:
         print(f"✓ Found virtual environment: {venv}\n")
     else:
         print("  No virtual environment found (this is optional)\n")
 
-    # Check and install Flask
-    print("Checking Flask installation...")
-    if not check_and_install_flask():
+    if not check_flask_installed():
         sys.exit(1)
 
-    # Find a free port
-    print("\nFinding available port...")
     port = find_free_port()
     if not port:
         print("✗ Could not find an available port")
         sys.exit(1)
     print(f"✓ Using port {port}\n")
 
-    # Prepare to launch
     url = f"http://127.0.0.1:{port}"
     print("=" * 60)
     print("Starting BP Extract...")
     print(f"Access the application at: {url}")
-    print("Press Ctrl+C to stop the application")
+    print("Press Ctrl+C to stop")
     print("=" * 60 + "\n")
 
-    # Give user a moment to read the message
-    time.sleep(1)
+    # Start Flask in a daemon thread
+    os.environ["BP_EXTRACT_PORT"] = str(port)
+    flask_thread = threading.Thread(target=_run_flask, args=(port,), daemon=True)
+    flask_thread.start()
 
-    # Open browser
+    # Wait for Flask to be ready before opening the browser
+    if not wait_for_port("127.0.0.1", port):
+        print("✗ Server did not start in time")
+        sys.exit(1)
+
     try:
         webbrowser.open(url)
         print(f"✓ Opened {url} in your default browser\n")
     except Exception as e:
-        print(f"! Could not open browser automatically: {e}")
-        print(f"  Please open {url} manually in your browser\n")
+        print(f"! Could not open browser: {e}")
+        print(f"  Open {url} manually\n")
 
-    # Launch Flask app
+    # Keep the main thread alive
     try:
-        if sys.platform == "win32":
-            # Windows: use shell=True for better process handling
-            os.environ["FLASK_ENV"] = "production"
-            subprocess.run(
-                [sys.executable, "app.py"],
-                cwd=Path(__file__).parent,
-            )
-        else:
-            # Unix-like systems
-            os.environ["FLASK_ENV"] = "production"
-            subprocess.run(
-                [sys.executable, "app.py"],
-                cwd=Path(__file__).parent,
-            )
+        flask_thread.join()
     except KeyboardInterrupt:
         print("\n\nShutting down BP Extract...")
         sys.exit(0)
-    except Exception as e:
-        print(f"\n✗ Error running application: {e}")
-        print("\nTroubleshooting:")
-        print("1. Make sure you're in the BP Extract directory")
-        print("2. Check that app.py exists in this directory")
-        print("3. Try running manually: python app.py")
-        sys.exit(1)
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()
