@@ -9,6 +9,25 @@ import pytest
 import launch
 
 
+class TestWaitForPort:
+    def test_returns_true_when_port_ready(self):
+        with patch("socket.create_connection"):
+            result = launch.wait_for_port("127.0.0.1", 5000, timeout=1.0)
+        assert result is True
+
+    def test_returns_false_when_timeout_elapses(self):
+        # timeout=0.0 means deadline is already in the past; loop never runs
+        result = launch.wait_for_port("127.0.0.1", 9999, timeout=0.0)
+        assert result is False
+
+
+class TestRunFlask:
+    def test_calls_run_server_with_port(self):
+        with patch("app.run_server") as mock_run_server:
+            launch._run_flask(5001)
+        mock_run_server.assert_called_once_with(5001)
+
+
 class TestCheckPythonVersion:
     def test_passes_on_current_python(self):
         # Current interpreter satisfies 3.12+ (enforced by pyproject.toml)
@@ -41,7 +60,11 @@ class TestCheckFlaskInstalled:
         assert result is True
 
     def test_returns_false_when_flask_not_importable(self, capsys):
-        with patch.dict("sys.modules", {"flask": None}):
+        from importlib.metadata import PackageNotFoundError
+
+        with patch(
+            "importlib.metadata.version", side_effect=PackageNotFoundError("flask")
+        ):
             result = launch.check_flask_installed()
         assert result is False
         out = capsys.readouterr().out
@@ -90,29 +113,32 @@ class TestMain:
         assert exc_info.value.code == 1
 
     def test_runs_app_when_all_checks_pass(self):
+        mock_thread = MagicMock()
+        mock_thread.join.return_value = None
         with (
             patch("launch.check_python_version"),
             patch("launch.find_virtual_env", return_value=None),
             patch("launch.check_flask_installed", return_value=True),
             patch("launch.find_free_port", return_value=5000),
-            patch("launch.webbrowser.open"),
-            patch("launch.time.sleep"),
-            patch("launch.subprocess.run") as mock_run,
+            patch("launch.wait_for_port", return_value=True),
+            patch("launch.webbrowser.open") as mock_wb,
+            patch("threading.Thread", return_value=mock_thread),
         ):
             launch.main()
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert "app.py" in args
+        mock_thread.start.assert_called_once()
+        mock_wb.assert_called_once_with("http://127.0.0.1:5000")
 
     def test_handles_keyboard_interrupt_gracefully(self):
+        mock_thread = MagicMock()
+        mock_thread.join.side_effect = KeyboardInterrupt
         with (
             patch("launch.check_python_version"),
             patch("launch.find_virtual_env", return_value=None),
             patch("launch.check_flask_installed", return_value=True),
             patch("launch.find_free_port", return_value=5000),
+            patch("launch.wait_for_port", return_value=True),
             patch("launch.webbrowser.open"),
-            patch("launch.time.sleep"),
-            patch("launch.subprocess.run", side_effect=KeyboardInterrupt),
+            patch("threading.Thread", return_value=mock_thread),
             pytest.raises(SystemExit) as exc_info,
         ):
             launch.main()

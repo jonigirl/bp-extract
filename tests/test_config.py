@@ -65,6 +65,10 @@ class TestCreateDefaultConfig:
         c = Config()
         assert isinstance(c.config["poll_interval"], float)
 
+    def test_default_config_includes_ui_mode(self, reset_config_singleton):
+        cfg = Config()
+        assert cfg.get("ui_mode") == "browser"
+
 
 class TestConfigGetSet:
     def test_get_returns_stored_value(self, tmp_path, monkeypatch):
@@ -216,3 +220,94 @@ class TestGetConfig:
         first = get_config()
         second = get_config()
         assert first is second
+
+
+class TestMigrateLegacyData:
+    def test_copies_config_from_legacy_location(self, tmp_path, monkeypatch):
+        legacy_dir = tmp_path / "legacy"
+        legacy_dir.mkdir()
+        app_data_dir = tmp_path / "appdata"
+        app_data_dir.mkdir()
+
+        (legacy_dir / "config.json").write_text(
+            '{"first_run": false}', encoding="utf-8"
+        )
+
+        monkeypatch.setattr(config_module, "_BASE_DIR", legacy_dir)
+        monkeypatch.setattr(
+            config_module, "CONFIG_FILE", str(app_data_dir / "config.json")
+        )
+        monkeypatch.setattr(
+            config_module, "DATA_FILE", str(app_data_dir / "blueprints.json")
+        )
+
+        config_module._migrate_legacy_data()
+
+        assert (app_data_dir / "config.json").exists()
+        assert (legacy_dir / "config.json").exists()  # source preserved
+
+    def test_copies_blueprints_from_legacy_location(self, tmp_path, monkeypatch):
+        legacy_dir = tmp_path / "legacy"
+        legacy_dir.mkdir()
+        app_data_dir = tmp_path / "appdata"
+        app_data_dir.mkdir()
+
+        (legacy_dir / "blueprints.json").write_text("[]", encoding="utf-8")
+
+        monkeypatch.setattr(config_module, "_BASE_DIR", legacy_dir)
+        monkeypatch.setattr(
+            config_module, "CONFIG_FILE", str(app_data_dir / "config.json")
+        )
+        monkeypatch.setattr(
+            config_module, "DATA_FILE", str(app_data_dir / "blueprints.json")
+        )
+
+        config_module._migrate_legacy_data()
+
+        assert (app_data_dir / "blueprints.json").exists()
+        assert (legacy_dir / "blueprints.json").exists()  # source preserved
+
+    def test_skips_migration_when_appdata_config_exists(self, tmp_path, monkeypatch):
+        legacy_dir = tmp_path / "legacy"
+        legacy_dir.mkdir()
+        app_data_dir = tmp_path / "appdata"
+        app_data_dir.mkdir()
+
+        (legacy_dir / "config.json").write_text(
+            '{"first_run": false}', encoding="utf-8"
+        )
+        (app_data_dir / "config.json").write_text(
+            '{"first_run": true}', encoding="utf-8"
+        )
+
+        monkeypatch.setattr(config_module, "_BASE_DIR", legacy_dir)
+        monkeypatch.setattr(
+            config_module, "CONFIG_FILE", str(app_data_dir / "config.json")
+        )
+        monkeypatch.setattr(
+            config_module, "DATA_FILE", str(app_data_dir / "blueprints.json")
+        )
+
+        config_module._migrate_legacy_data()
+
+        data = json.loads((app_data_dir / "config.json").read_text(encoding="utf-8"))
+        assert data["first_run"] is True
+
+
+class TestGetOrCreateSecretKey:
+    def test_creates_key_file_on_first_call(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            config_module, "SECRET_KEY_FILE", str(tmp_path / "secret.key")
+        )
+        key = config_module.get_or_create_secret_key()
+        assert isinstance(key, bytes)
+        assert len(key) == 32
+        assert (tmp_path / "secret.key").exists()
+
+    def test_returns_same_key_on_second_call(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            config_module, "SECRET_KEY_FILE", str(tmp_path / "secret.key")
+        )
+        key1 = config_module.get_or_create_secret_key()
+        key2 = config_module.get_or_create_secret_key()
+        assert key1 == key2

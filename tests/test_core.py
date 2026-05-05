@@ -228,7 +228,7 @@ class TestProcessBlueprint:
         data_file = str(tmp_path / "data.json")
         result = process_blueprint(VALID_LOG_LINE_QUOTED_NAME, known, data_file)
         assert result is True
-        assert any('"Thunderstrike"' in name for name in known)
+        assert 'Zenith "Thunderstrike" Laser Sniper Rifle' in known
 
 
 class TestScanBackups:
@@ -273,6 +273,62 @@ class TestTailLog:
         log_file.write_text("", encoding="utf-8")
         data_file = str(tmp_path / "data.json")
         tail_log(str(log_file), data_file, stop_event=stop_event)
+
+    def test_processes_blueprint_line_while_running(self, tmp_path):
+        log_file = tmp_path / "Game.log"
+        log_file.write_text("", encoding="utf-8")
+        data_file = str(tmp_path / "data.json")
+
+        stop_event = threading.Event()
+        found = []
+
+        def write_line():
+            import time
+
+            time.sleep(0.05)
+            with open(str(log_file), "a", encoding="utf-8") as f:
+                f.write(VALID_LOG_LINE + "\n")
+
+        writer = threading.Thread(target=write_line)
+        writer.start()
+
+        def on_bp(*args):
+            found.append(args)
+            stop_event.set()
+
+        tail_log(
+            str(log_file),
+            data_file,
+            poll_interval=0.02,
+            wait_interval=0.02,
+            stop_event=stop_event,
+            on_new_blueprint=on_bp,
+        )
+        writer.join()
+        assert len(found) == 1
+
+    def test_pause_callback_is_invoked(self, tmp_path):
+        log_file = tmp_path / "Game.log"
+        log_file.write_text("", encoding="utf-8")
+        data_file = str(tmp_path / "data.json")
+
+        stop_event = threading.Event()
+        pause_called = []
+
+        def should_pause():
+            pause_called.append(True)
+            stop_event.set()
+            return False
+
+        tail_log(
+            str(log_file),
+            data_file,
+            poll_interval=0.02,
+            wait_interval=0.02,
+            stop_event=stop_event,
+            should_pause_fn=should_pause,
+        )
+        assert len(pause_called) > 0
 
 
 class TestGetFileId:

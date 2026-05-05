@@ -12,19 +12,66 @@ import json
 import logging
 import os
 import platform
+import shutil
 from pathlib import Path
 
 _BASE_DIR = Path(__file__).parent
-CONFIG_FILE = str(_BASE_DIR / "config.json")
-DATA_FILE = str(_BASE_DIR / "blueprints.json")
 
 logger = logging.getLogger(__name__)
+
+
+def get_app_data_dir() -> Path:
+    """Return the platform-appropriate user-writable data directory, creating it if needed."""
+    system = platform.system()
+    if system == "Windows":
+        base = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
+    elif system == "Darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(
+            os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+        )
+    app_dir = base / "BPExtract"
+    app_dir.mkdir(parents=True, exist_ok=True)
+    return app_dir
+
+
+CONFIG_FILE = str(get_app_data_dir() / "config.json")
+DATA_FILE = str(get_app_data_dir() / "blueprints.json")
+SECRET_KEY_FILE = str(get_app_data_dir() / "secret.key")
+
+
+def _migrate_legacy_data() -> None:
+    """Copy config and data files from the legacy script-relative location to the app data directory."""
+    app_data_config = Path(CONFIG_FILE)
+    app_data_data = Path(DATA_FILE)
+    legacy_config = _BASE_DIR / "config.json"
+    legacy_data = _BASE_DIR / "blueprints.json"
+
+    if not app_data_config.exists() and legacy_config.exists():
+        shutil.copy2(str(legacy_config), str(app_data_config))
+        logger.info("Migrated config from %s to %s", legacy_config, app_data_config)
+
+    if not app_data_data.exists() and legacy_data.exists():
+        shutil.copy2(str(legacy_data), str(app_data_data))
+        logger.info("Migrated blueprints from %s to %s", legacy_data, app_data_data)
+
+
+def get_or_create_secret_key() -> bytes:
+    """Return the persistent secret key, generating and saving it if it does not exist."""
+    key_path = Path(SECRET_KEY_FILE)
+    if key_path.exists():
+        return key_path.read_bytes()
+    key = os.urandom(32)
+    key_path.write_bytes(key)
+    return key
 
 
 class Config:
     """Application configuration manager."""
 
     def __init__(self):
+        _migrate_legacy_data()
         self.config_path = Path(CONFIG_FILE)
         self.config = self._load_config()
 
@@ -50,6 +97,7 @@ class Config:
             "wait_interval": 1.0,
             "first_run": True,
             "platform": platform.system(),
+            "ui_mode": "browser",
         }
 
     def _detect_sc_paths(self) -> tuple:
@@ -166,7 +214,7 @@ class Config:
                 "Please check your Star Citizen installation path.",
             )
 
-        if not os.path.exists(backup_dir):
+        if not backup_dir or not os.path.exists(backup_dir):
             return (
                 False,
                 f"Backup directory not found at: {backup_dir}\n"

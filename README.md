@@ -311,9 +311,17 @@ Edit `config.json` - decrease `poll_interval` for faster detection (0.1 = very r
 
 ## 📝 Version History
 
+- **v0.4.0** - Release packaging, APPDATA config storage, in-process launcher, first-run web wizard, settings panel, GitHub Actions CI/CD
 - **v0.3.0** - JSON migration, cross-platform auto-detection, setup wizard
 - **v0.2.0** - Web interface with Flask dashboard
 - **v0.1.0** - Initial CLI-only version
+
+## 🗺️ Roadmap
+
+**v2.0 (planned)**
+
+- Native window via [pywebview](https://pywebview.flowrl.com/) — no external browser required
+- System tray integration via [pystray](https://github.com/moses-palmer/pystray) — run in background with tray icon and config toggle
 
 ## 🙏 Credits & Acknowledgments
 
