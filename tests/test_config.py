@@ -2,17 +2,8 @@ import json
 import platform
 from unittest.mock import patch
 
-import pytest
-
 import config as config_module
 from config import Config, get_config
-
-
-@pytest.fixture(autouse=True)
-def reset_config_singleton():
-    config_module._config_instance = None
-    yield
-    config_module._config_instance = None
 
 
 class TestConfigLoadConfig:

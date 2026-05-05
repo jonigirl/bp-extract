@@ -23,7 +23,6 @@ class Config:
 
     def __init__(self):
         self.config_path = Path(CONFIG_FILE)
-        self.data_path = Path(DATA_FILE)
         self.config = self._load_config()
 
     def _load_config(self) -> dict:
@@ -43,7 +42,7 @@ class Config:
         return {
             "log_file": log_file,
             "backup_dir": backup_dir,
-            "data_file": str(self.data_path),
+            "data_file": DATA_FILE,
             "poll_interval": 0.5,
             "wait_interval": 1.0,
             "first_run": True,

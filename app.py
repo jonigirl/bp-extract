@@ -17,7 +17,10 @@ from core import (
     tail_log,
 )
 
+APP_VERSION = "0.3.0"
+
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 
 # Configuration from config system
 config = None
@@ -96,7 +99,7 @@ def check_initialized():
 @app.route("/")
 def index():
     """Serve the main dashboard."""
-    return render_template("index.html")
+    return render_template("index.html", version=APP_VERSION)
 
 
 @app.route("/api/blueprints")
@@ -131,7 +134,6 @@ def get_blueprints():
 def get_stats():
     """Get statistics about blueprints."""
     blueprints = get_blueprints_from_json(DATA_FILE)
-    known_blueprints = load_existing_blueprints(DATA_FILE)
 
     # Today's blueprints
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -144,7 +146,7 @@ def get_stats():
 
     return jsonify(
         {
-            "total_count": len(known_blueprints),
+            "total_count": len(blueprints),
             "today_count": today_count,
             "last_acquired": last_acquired,
             "monitoring_paused": _pause_event.is_set(),
@@ -168,7 +170,8 @@ def trigger_scan_backups():
         global last_updated
         try:
             scan_backups(BACKUP_DIR, DATA_FILE, LOG_FILE)
-            last_updated = datetime.now().isoformat()
+            with lock:
+                last_updated = datetime.now().isoformat()
         except Exception as e:
             print(f"Error scanning backups: {e}")
         finally:
@@ -243,20 +246,17 @@ def server_error(e):
 
 
 if __name__ == "__main__":
-    # Create necessary directories
-    os.makedirs("templates", exist_ok=True)
-    os.makedirs("static", exist_ok=True)
+    _base = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(os.path.join(_base, "templates"), exist_ok=True)
+    os.makedirs(os.path.join(_base, "static"), exist_ok=True)
 
-    # Initialize configuration
-    initialize()
+    _port = int(os.environ.get("BP_EXTRACT_PORT", 5000))
 
-    # Start monitoring thread
     print("Starting BP Extract web server...")
     print(f"Monitoring log file: {LOG_FILE}")
     print(f"Data file: {DATA_FILE}")
-    print("Access dashboard at: http://localhost:5000")
+    print(f"Access dashboard at: http://127.0.0.1:{_port}")
 
     monitoring_thread = start_monitoring()
 
-    # Run Flask app
-    app.run(debug=False, host="127.0.0.1", port=5000)
+    app.run(debug=False, host="127.0.0.1", port=_port)

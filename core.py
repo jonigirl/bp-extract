@@ -9,9 +9,6 @@ import time
 
 PATTERN = re.compile(r'<([^>]+)>.*Received Blueprint:\s*(.*?):\s*"')
 
-# Deprecated - kept for CSV migration only
-DEFAULT_CSV_FILE = "blueprints.csv"
-
 _write_lock = threading.Lock()
 
 

@@ -118,13 +118,10 @@ class TestStatsEndpoint:
         assert "monitoring_paused" in data
         assert "is_scanning" in data
 
-    def test_total_count_matches_known_blueprints(self, client):
-        with (
-            patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS),
-            patch("app.load_existing_blueprints", return_value={"A", "B"}),
-        ):
+    def test_total_count_matches_blueprints_list(self, client):
+        with patch("app.get_blueprints_from_json", return_value=SAMPLE_BLUEPRINTS):
             response = client.get("/api/stats")
-        assert response.get_json()["total_count"] == 2
+        assert response.get_json()["total_count"] == len(SAMPLE_BLUEPRINTS)
 
 
 class TestPauseResumeEndpoints:

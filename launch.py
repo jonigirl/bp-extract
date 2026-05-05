@@ -40,26 +40,17 @@ def activate_virtual_env(venv_path):
         print(f"To manually activate: source {activate_script}")
 
 
-def check_and_install_flask():
-    """Check if Flask is installed, install if necessary."""
+def check_flask_installed():
+    """Check if Flask is installed."""
     try:
         import flask
 
         print(f"✓ Flask is installed (version {flask.__version__})")
         return True
     except ImportError:
-        print("Flask not found. Attempting to install...")
-        try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "Flask"],
-                stdout=subprocess.DEVNULL,
-            )
-            print("✓ Flask installed successfully")
-            return True
-        except subprocess.CalledProcessError:
-            print("✗ Failed to install Flask")
-            print("  Try running manually: pip install Flask")
-            return False
+        print("✗ Flask not found.")
+        print("  Install dependencies first: uv sync  (or: pip install flask)")
+        return False
 
 
 def find_free_port(host="127.0.0.1", start_port=5000):
@@ -98,9 +89,9 @@ def main():
     else:
         print("  No virtual environment found (this is optional)\n")
 
-    # Check and install Flask
+    # Check Flask
     print("Checking Flask installation...")
-    if not check_and_install_flask():
+    if not check_flask_installed():
         sys.exit(1)
 
     # Find a free port
@@ -132,20 +123,12 @@ def main():
 
     # Launch Flask app
     try:
-        if sys.platform == "win32":
-            # Windows: use shell=True for better process handling
-            os.environ["FLASK_ENV"] = "production"
-            subprocess.run(
-                [sys.executable, "app.py"],
-                cwd=Path(__file__).parent,
-            )
-        else:
-            # Unix-like systems
-            os.environ["FLASK_ENV"] = "production"
-            subprocess.run(
-                [sys.executable, "app.py"],
-                cwd=Path(__file__).parent,
-            )
+        os.environ["FLASK_DEBUG"] = "0"
+        os.environ["BP_EXTRACT_PORT"] = str(port)
+        subprocess.run(
+            [sys.executable, "app.py"],
+            cwd=Path(__file__).parent,
+        )
     except KeyboardInterrupt:
         print("\n\nShutting down BP Extract...")
         sys.exit(0)
