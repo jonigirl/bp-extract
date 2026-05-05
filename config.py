@@ -9,6 +9,7 @@ Handles:
 """
 
 import json
+import logging
 import os
 import platform
 from pathlib import Path
@@ -16,6 +17,8 @@ from pathlib import Path
 _BASE_DIR = Path(__file__).parent
 CONFIG_FILE = str(_BASE_DIR / "config.json")
 DATA_FILE = str(_BASE_DIR / "blueprints.json")
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -127,8 +130,11 @@ class Config:
     def save(self) -> None:
         """Save configuration to file."""
         self.config["first_run"] = False
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(self.config, f, indent=2)
+        try:
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=2)
+        except IOError as e:
+            logger.error("Failed to save config to %s: %s", self.config_path, e)
 
     def get(self, key: str, default=None):
         """Get configuration value."""

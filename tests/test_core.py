@@ -204,17 +204,17 @@ class TestProcessBlueprint:
 
 
 class TestScanBackups:
-    def test_missing_dir_returns_none(self, tmp_path):
+    def test_missing_dir_returns_empty_set(self, tmp_path):
         result = scan_backups(
             str(tmp_path / "nonexistent"), str(tmp_path / "data.json")
         )
-        assert result is None
+        assert result == set()
 
-    def test_empty_dir_no_log_files_returns_none(self, tmp_path):
+    def test_empty_dir_no_log_files_returns_empty_set(self, tmp_path):
         backup_dir = tmp_path / "logbackups"
         backup_dir.mkdir()
         result = scan_backups(str(backup_dir), str(tmp_path / "data.json"))
-        assert result is None
+        assert result == set()
 
     def test_processes_blueprints_from_log_files(self, tmp_path):
         backup_dir = tmp_path / "logbackups"

@@ -1,10 +1,10 @@
 """CLI interface for BP Extract."""
 
-import os
+import logging
 import sys
 
 from config import get_config
-from core import load_existing_blueprints, scan_backups, tail_log
+from core import scan_backups, tail_log
 from setup_wizard import run_setup
 
 YES_CHOICES = {"y", "yes"}
@@ -13,6 +13,12 @@ NO_CHOICES = {"n", "no"}
 
 def main():
     """Main CLI entry point."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     # Initialize config and run setup if needed
     config = get_config()
     run_setup()
@@ -53,7 +59,7 @@ def main():
             data_file,
             poll_interval=poll_interval,
             wait_interval=wait_interval,
-            known_blueprints=known_blueprints
+            known_blueprints=known_blueprints,
         )
     except KeyboardInterrupt:
         print("\nStopping blueprint logger.")

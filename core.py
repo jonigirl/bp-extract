@@ -2,6 +2,7 @@
 
 import csv
 import json
+import logging
 import os
 import re
 import threading
@@ -10,6 +11,7 @@ import time
 PATTERN = re.compile(r'<([^>]+)>.*Received Blueprint:\s*(.*?):\s*"')
 
 _write_lock = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -33,7 +35,7 @@ def load_blueprints_data(data_file: str) -> dict:
                 data = {"blueprints": []}
             return data
     except (json.JSONDecodeError, IOError) as e:
-        print(f"Error reading {data_file}: {e}")
+        logger.error("Error reading %s: %s", data_file, e)
         return {"blueprints": []}
 
 
@@ -43,7 +45,7 @@ def save_blueprints_data(data_file: str, data: dict) -> None:
         with open(data_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
     except IOError as e:
-        print(f"Error writing to {data_file}: {e}")
+        logger.error("Error writing to %s: %s", data_file, e)
 
 
 def load_existing_blueprints(data_file: str) -> set:
@@ -66,11 +68,9 @@ def append_blueprint(blueprint_name: str, timestamp: str, data_file: str) -> Non
     with _write_lock:
         data = load_blueprints_data(data_file)
 
-        # Check if blueprint already exists
-        for bp in data["blueprints"]:
-            if bp["name"] == blueprint_name:
-                # Already exists, don't add duplicate
-                return
+        existing = {bp["name"] for bp in data["blueprints"]}
+        if blueprint_name in existing:
+            return
 
         # Add new blueprint
         data["blueprints"].append({"name": blueprint_name, "timestamp": timestamp})
@@ -136,9 +136,9 @@ def process_blueprint(
             known_blueprints.add(bp)
             append_blueprint(bp, timestamp, data_file)
             if source:
-                print(f"[{timestamp}] New blueprint acquired {source}: {bp}")
+                logger.info("[%s] New blueprint acquired %s: %s", timestamp, source, bp)
             else:
-                print(f"[{timestamp}] New blueprint acquired: {bp}")
+                logger.info("[%s] New blueprint acquired: %s", timestamp, bp)
             return True
     return False
 
@@ -159,17 +159,18 @@ def get_file_id(path: str):
 
 def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
     """Scan backup log files for blueprints."""
-    if not os.path.exists(backup_dir):
-        print(f"Backup directory not found: {backup_dir}")
-        return None
-
     known_blueprints = load_existing_blueprints(data_file)
-    print(f"Scanning backups in {backup_dir}...")
+
+    if not os.path.exists(backup_dir):
+        logger.warning("Backup directory not found: %s", backup_dir)
+        return known_blueprints
+
+    logger.info("Scanning backups in %s...", backup_dir)
 
     files = sorted([f for f in os.listdir(backup_dir) if f.endswith(".log")])
     if not files:
-        print("No log backups found.")
-        return None
+        logger.info("No log backups found.")
+        return known_blueprints
 
     for filename in files:
         filepath = os.path.join(backup_dir, filename)
@@ -180,7 +181,7 @@ def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
                         line, known_blueprints, data_file, f"from backup {filename}"
                     )
         except (OSError, IOError) as e:
-            print(f"Error reading {filename}: {e}")
+            logger.error("Error reading %s: %s", filename, e)
 
     return known_blueprints
 
@@ -193,6 +194,7 @@ def tail_log(
     known_blueprints: set = None,
     should_pause_fn=None,
     stop_event=None,
+    on_new_blueprint=None,
 ) -> None:
     """Monitor a log file for new blueprints continuously.
 
@@ -208,17 +210,18 @@ def tail_log(
     if known_blueprints is None:
         known_blueprints = load_existing_blueprints(data_file)
 
-    print(f"Monitoring log file: {log_file}")
+    logger.info("Monitoring log file: %s", log_file)
 
-    # Wait for the file to exist before starting
-    while not os.path.exists(log_file):
-        if stop_event and stop_event.is_set():
-            return
-        print(f"Waiting for {log_file} to be created...", end="\r")
-        time.sleep(wait_interval)
+    if not os.path.exists(log_file):
+        logger.info("Waiting for %s to be created...", log_file)
+        while not os.path.exists(log_file):
+            if stop_event and stop_event.is_set():
+                return
+            time.sleep(wait_interval)
 
-    print(f"\nLoaded {len(known_blueprints)} known blueprints.")
-    print("Log processing started. Waiting for new lines...")
+    logger.info(
+        "Loaded %d known blueprints. Waiting for new lines...", len(known_blueprints)
+    )
 
     f = None
     try:
@@ -239,7 +242,7 @@ def tail_log(
                 # Reached end of file. Check if file was rotated/recreated.
                 current_id = get_file_id(log_file)
                 if current_id and current_id != file_id:
-                    print(f"\n{log_file} was recreated/rotated. Reopening...")
+                    logger.info("%s was recreated/rotated. Reopening...", log_file)
                     f.close()
                     f = open(log_file, "r", encoding="utf-8", errors="replace")
                     file_id = current_id
@@ -248,7 +251,11 @@ def tail_log(
                 time.sleep(poll_interval)
                 continue
 
-            process_blueprint(line, known_blueprints, data_file, "and logged")
+            if (
+                process_blueprint(line, known_blueprints, data_file)
+                and on_new_blueprint
+            ):
+                on_new_blueprint()
     finally:
         if f:
             f.close()

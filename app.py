@@ -1,8 +1,8 @@
 """Flask web application for BP Extract."""
 
 import csv
+import logging
 import os
-import sys
 import threading
 from datetime import datetime
 from io import StringIO
@@ -21,6 +21,7 @@ APP_VERSION = "0.3.0"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
+logger = logging.getLogger(__name__)
 
 # Configuration from config system
 config = None
@@ -52,7 +53,7 @@ def initialize():
 try:
     initialize()
 except Exception as e:
-    print(f"Warning: startup initialization failed: {e}", file=sys.stderr)
+    logging.warning("Startup initialization failed: %s", e)
 
 # Global state
 monitoring_thread = None
@@ -70,6 +71,11 @@ def start_monitoring():
     _stop_event = threading.Event()
     stop_event = _stop_event  # captured by closure
 
+    def on_new():
+        global last_updated
+        with lock:
+            last_updated = datetime.now().isoformat()
+
     def monitor():
         known_blueprints = load_existing_blueprints(DATA_FILE)
         tail_log(
@@ -80,6 +86,7 @@ def start_monitoring():
             known_blueprints=known_blueprints,
             should_pause_fn=_pause_event.is_set,
             stop_event=stop_event,
+            on_new_blueprint=on_new,
         )
 
     monitoring_thread = threading.Thread(target=monitor, daemon=True)
@@ -173,7 +180,7 @@ def trigger_scan_backups():
             with lock:
                 last_updated = datetime.now().isoformat()
         except Exception as e:
-            print(f"Error scanning backups: {e}")
+            logger.error("Error scanning backups: %s", e)
         finally:
             _scanning_event.clear()
 
@@ -246,16 +253,22 @@ def server_error(e):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     _base = os.path.dirname(os.path.abspath(__file__))
     os.makedirs(os.path.join(_base, "templates"), exist_ok=True)
     os.makedirs(os.path.join(_base, "static"), exist_ok=True)
 
     _port = int(os.environ.get("BP_EXTRACT_PORT", 5000))
 
-    print("Starting BP Extract web server...")
-    print(f"Monitoring log file: {LOG_FILE}")
-    print(f"Data file: {DATA_FILE}")
-    print(f"Access dashboard at: http://127.0.0.1:{_port}")
+    logger.info("Starting BP Extract web server...")
+    logger.info("Monitoring log file: %s", LOG_FILE)
+    logger.info("Data file: %s", DATA_FILE)
+    logger.info("Access dashboard at: http://127.0.0.1:%d", _port)
 
     monitoring_thread = start_monitoring()
 
