@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from io import StringIO
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 
 from config import get_config
 from core import (
@@ -17,7 +17,7 @@ from core import (
     tail_log,
 )
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -47,6 +47,17 @@ def initialize():
     BACKUP_DIR = config.get("backup_dir")
     POLL_INTERVAL = config.get("poll_interval", 0.5)
     WAIT_INTERVAL = config.get("wait_interval", 1.0)
+
+
+def _require_xhr():
+    """Abort with 403 if the request was not sent as an XMLHttpRequest.
+
+    This is a lightweight CSRF mitigation for same-origin API endpoints.
+    All legitimate callers (the built-in dashboard JS) send this header.
+    Cross-site form submissions and most CSRF attack vectors cannot set it.
+    """
+    if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        abort(403)
 
 
 # Initialize on import
@@ -166,6 +177,7 @@ def get_stats():
 @app.route("/api/scan-backups", methods=["POST"])
 def trigger_scan_backups():
     """Trigger a backup scan."""
+    _require_xhr()
     global last_updated
 
     if _scanning_event.is_set():
@@ -193,6 +205,7 @@ def trigger_scan_backups():
 @app.route("/api/pause", methods=["POST"])
 def pause_monitoring():
     """Pause monitoring."""
+    _require_xhr()
     _pause_event.set()
     return jsonify({"status": "Monitoring paused"})
 
@@ -200,6 +213,7 @@ def pause_monitoring():
 @app.route("/api/resume", methods=["POST"])
 def resume_monitoring():
     """Resume monitoring."""
+    _require_xhr()
     _pause_event.clear()
     return jsonify({"status": "Monitoring resumed"})
 

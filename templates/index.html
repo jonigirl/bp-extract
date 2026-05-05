@@ -353,6 +353,7 @@
           document.getElementById("scan-backups-btn").disabled = true;
           const response = await fetch(`${CONFIG.API_BASE}/scan-backups`, {
             method: "POST",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
           });
           const result = await response.json();
 
@@ -386,6 +387,7 @@
           const endpoint = isMonitoringPaused ? "resume" : "pause";
           const response = await fetch(`${CONFIG.API_BASE}/${endpoint}`, {
             method: "POST",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
           });
           if (response.ok) {
             await loadData();

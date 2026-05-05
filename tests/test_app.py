@@ -11,6 +11,8 @@ SAMPLE_BLUEPRINTS = [
     {"name": "Mu Blueprint", "timestamp": "2024-01-03T12:00:00"},
 ]
 
+XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+
 
 @pytest.fixture
 def client(tmp_path):
@@ -24,6 +26,9 @@ def client(tmp_path):
         yield c
     app_module._pause_event.clear()
     app_module._scanning_event.clear()
+
+
+XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
 
 class TestIndexRoute:
@@ -126,24 +131,32 @@ class TestStatsEndpoint:
 
 class TestPauseResumeEndpoints:
     def test_pause_returns_200(self, client):
-        response = client.post("/api/pause")
+        response = client.post("/api/pause", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "paused" in response.get_json()["status"].lower()
 
     def test_pause_sets_pause_event(self, client):
-        client.post("/api/pause")
+        client.post("/api/pause", headers=XHR_HEADERS)
         assert app_module._pause_event.is_set()
+
+    def test_pause_rejected_without_xhr_header(self, client):
+        response = client.post("/api/pause")
+        assert response.status_code == 403
 
     def test_resume_returns_200(self, client):
         app_module._pause_event.set()
-        response = client.post("/api/resume")
+        response = client.post("/api/resume", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "resumed" in response.get_json()["status"].lower()
 
     def test_resume_clears_pause_event(self, client):
         app_module._pause_event.set()
-        client.post("/api/resume")
+        client.post("/api/resume", headers=XHR_HEADERS)
         assert not app_module._pause_event.is_set()
+
+    def test_resume_rejected_without_xhr_header(self, client):
+        response = client.post("/api/resume")
+        assert response.status_code == 403
 
 
 class TestStatusEndpoint:
@@ -167,15 +180,19 @@ class TestStatusEndpoint:
 class TestScanBackupsEndpoint:
     def test_returns_200_and_starts_scan(self, client):
         with patch("app.scan_backups"):
-            response = client.post("/api/scan-backups")
+            response = client.post("/api/scan-backups", headers=XHR_HEADERS)
         assert response.status_code == 200
         assert "status" in response.get_json()
 
     def test_returns_400_when_scan_already_running(self, client):
         app_module._scanning_event.set()
-        response = client.post("/api/scan-backups")
+        response = client.post("/api/scan-backups", headers=XHR_HEADERS)
         assert response.status_code == 400
         assert "error" in response.get_json()
+
+    def test_scan_rejected_without_xhr_header(self, client):
+        response = client.post("/api/scan-backups")
+        assert response.status_code == 403
 
 
 class TestExportCsvEndpoint:

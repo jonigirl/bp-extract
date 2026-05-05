@@ -15,9 +15,22 @@ from core import (
     tail_log,
 )
 
+# Real Game.log format: notification lines with no trailing data after the quote
 VALID_LOG_LINE = (
-    '<2024-01-15T10:30:00.000Z> Received Blueprint: My Blueprint: "Some data"'
+    "<2026-03-26T01:43:22.515Z> [Notice] <SHUDEvent_OnNotification> Added "
+    'notification "Received Blueprint: My Blueprint: " [19] to queue.'
 )
+# Blueprint name containing embedded quotes (real example)
+VALID_LOG_LINE_QUOTED_NAME = (
+    "<2026-03-26T03:21:02.390Z> [Notice] <SHUDEvent_OnNotification> Added "
+    'notification "Received Blueprint: Zenith "Thunderstrike" Laser Sniper Rifle: " [35] to queue.'
+)
+# Realistic noise lines that should not be parsed as blueprints
+NOISE_LINES = [
+    "<2026-05-04T10:21:25.392Z> [Notice] <CreateChannel> Opening channel for sc.external.f7a3c...",
+    "<2026-05-04T10:21:25.394Z> [Trace] @session: '66d449eb-fb6d-1343-a075-24a5892361a5'",
+    "<2026-05-04T10:21:25.394Z> ===============================================================",
+]
 
 
 class TestLoadBlueprintsData:
@@ -202,6 +215,21 @@ class TestProcessBlueprint:
         data = json.loads(data_file.read_text(encoding="utf-8"))
         assert len(data["blueprints"]) == 1
 
+    def test_noise_lines_return_false(self, tmp_path):
+        known = set()
+        data_file = str(tmp_path / "data.json")
+        for line in NOISE_LINES:
+            assert process_blueprint(line, known, data_file) is False
+        assert known == set()
+
+    def test_blueprint_name_with_embedded_quotes(self, tmp_path):
+        """Blueprint names that contain double-quotes parse correctly."""
+        known = set()
+        data_file = str(tmp_path / "data.json")
+        result = process_blueprint(VALID_LOG_LINE_QUOTED_NAME, known, data_file)
+        assert result is True
+        assert any('"Thunderstrike"' in name for name in known)
+
 
 class TestScanBackups:
     def test_missing_dir_returns_empty_set(self, tmp_path):
@@ -221,7 +249,8 @@ class TestScanBackups:
         backup_dir.mkdir()
         data_file = str(tmp_path / "data.json")
         content = (
-            '<2024-01-15T10:30:00.000Z> Received Blueprint: Backup Blueprint: "data"'
+            "<2026-03-26T01:43:22.515Z> [Notice] <SHUDEvent_OnNotification> Added "
+            'notification "Received Blueprint: Backup Blueprint: " [19] to queue.'
         )
         (backup_dir / "game_backup.log").write_text(content, encoding="utf-8")
         result = scan_backups(str(backup_dir), data_file)
