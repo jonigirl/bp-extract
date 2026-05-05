@@ -25,7 +25,7 @@ class TestRunFlask:
     def test_calls_run_server_with_port(self):
         with patch("app.run_server") as mock_run_server:
             launch._run_flask(5001)
-        mock_run_server.assert_called_once_with(5001, browser_watchdog=True)
+        mock_run_server.assert_called_once_with(5001)
 
 
 class TestCheckPythonVersion:
@@ -114,7 +114,7 @@ class TestMain:
 
     def test_runs_app_when_all_checks_pass(self):
         mock_thread = MagicMock()
-        mock_thread.join.return_value = None
+        mock_thread.is_alive.return_value = False
         with (
             patch("launch.check_python_version"),
             patch("launch.find_virtual_env", return_value=None),
@@ -130,7 +130,7 @@ class TestMain:
 
     def test_handles_keyboard_interrupt_gracefully(self):
         mock_thread = MagicMock()
-        mock_thread.join.side_effect = KeyboardInterrupt
+        mock_thread.is_alive.return_value = True
         with (
             patch("launch.check_python_version"),
             patch("launch.find_virtual_env", return_value=None),
@@ -139,6 +139,7 @@ class TestMain:
             patch("launch.wait_for_port", return_value=True),
             patch("launch.webbrowser.open"),
             patch("threading.Thread", return_value=mock_thread),
+            patch("time.sleep", side_effect=KeyboardInterrupt),
             pytest.raises(SystemExit) as exc_info,
         ):
             launch.main()

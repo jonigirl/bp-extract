@@ -91,7 +91,7 @@ def _run_flask(port: int) -> None:
     """Import and run the Flask app in-process."""
     from app import run_server
 
-    run_server(port, browser_watchdog=True)
+    run_server(port)
 
 
 def main():
@@ -141,9 +141,23 @@ def main():
         print(f"! Could not open browser: {e}")
         print(f"  Open {url} manually\n")
 
-    # Keep the main thread alive
+    # Watchdog loop — main thread polls the heartbeat flag so os._exit fires
+    # reliably rather than from a daemon thread nested inside another daemon.
+    import app as _app_module
+
+    _watchdog_timeout = 20.0
+    _watchdog_poll = 5.0
     try:
-        flask_thread.join()
+        while flask_thread.is_alive():
+            time.sleep(_watchdog_poll)
+            with _app_module._heartbeat_lock:
+                hb = _app_module._last_heartbeat
+            if hb is None:
+                continue
+            if time.time() - hb > _watchdog_timeout:
+                print("\nNo browser heartbeat — shutting down.")
+                sys.stdout.flush()
+                os._exit(0)
     except KeyboardInterrupt:
         print("\n\nShutting down BP Extract...")
         sys.exit(0)
