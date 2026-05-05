@@ -32,7 +32,7 @@ body {
     sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.65;
 }
 
@@ -337,6 +337,38 @@ textarea {
   border-radius: 12px;
   font-size: 0.82rem;
   color: var(--text-secondary);
+}
+
+/* Scan Progress Banner */
+.scan-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(37, 99, 235, 0.15);
+  border: 1px solid var(--primary-color);
+  border-radius: 2px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  color: #93c5fd;
+}
+
+.scan-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(147, 197, 253, 0.3);
+  border-top-color: #93c5fd;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-spinner {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 /* Loading & Empty States */

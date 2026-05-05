@@ -25,6 +25,18 @@
         </div>
       </header>
 
+      <!-- Scan Progress Banner -->
+      <div
+        id="scan-banner"
+        class="scan-banner"
+        style="display: none"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="scan-spinner" aria-hidden="true"></span>
+        <span id="scan-banner-text">Scanning backup logs...</span>
+      </div>
+
       <!-- Statistics Section -->
       <section class="stats-section">
         <div class="stat-card">
@@ -253,12 +265,14 @@
       let sortReverse = false;
       let isMonitoringPaused = false;
       let isScanning = false;
+      let heartbeatInterval = null;
 
       // Initialize
       document.addEventListener("DOMContentLoaded", () => {
         loadData();
         setupEventListeners();
         setupAutoRefresh();
+        setupHeartbeat();
       });
 
       // Event Listeners
@@ -411,13 +425,27 @@
         }
 
         if (isScanning) {
+          const s = statsData.scan_status || {};
+          const banner = document.getElementById("scan-banner");
+          const bannerText = document.getElementById("scan-banner-text");
+          banner.style.display = "flex";
+          if (s.total > 0) {
+            bannerText.textContent =
+              `Scanning backup logs\u2026 file ${s.current} of ${s.total}` +
+              (s.found_new > 0
+                ? ` \u2014 ${s.found_new} new blueprint${s.found_new === 1 ? "" : "s"} found`
+                : "");
+          } else {
+            bannerText.textContent = "Scanning backup logs\u2026";
+          }
           document.getElementById("scan-backups-btn").disabled = true;
-          document.getElementById("scan-backups-btn").textContent =
-            "⏳ Scanning...";
+          document.getElementById("scan-backups-btn").innerHTML =
+            '<span class="icon">\u23f3</span> Scanning...';
         } else {
+          document.getElementById("scan-banner").style.display = "none";
           document.getElementById("scan-backups-btn").disabled = false;
-          document.getElementById("scan-backups-btn").textContent =
-            "📂 Scan Backups";
+          document.getElementById("scan-backups-btn").innerHTML =
+            '<span class="icon">\ud83d\udcc2</span> Scan Backups';
         }
       }
 
@@ -579,6 +607,12 @@
           autoRefreshInterval = setInterval(loadData, CONFIG.REFRESH_INTERVAL);
           updateRefreshStatus();
         }
+      }
+
+      function setupHeartbeat() {
+        heartbeatInterval = setInterval(() => {
+          fetch(`${CONFIG.API_BASE}/heartbeat`).catch(() => {});
+        }, 5000);
       }
 
       function toggleAutoRefresh(event) {

@@ -157,9 +157,19 @@ def get_file_id(path: str):
         return None
 
 
-def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
-    """Scan backup log files for blueprints."""
+def scan_backups(
+    backup_dir: str,
+    data_file: str,
+    log_file: str = None,
+    progress_callback=None,
+) -> set:
+    """Scan backup log files for blueprints.
+
+    progress_callback, if provided, is called after each file with
+    (current: int, total: int, found_new: int).
+    """
     known_blueprints = load_existing_blueprints(data_file)
+    initial_count = len(known_blueprints)
 
     if not os.path.exists(backup_dir):
         logger.warning("Backup directory not found: %s", backup_dir)
@@ -172,7 +182,8 @@ def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
         logger.info("No log backups found.")
         return known_blueprints
 
-    for filename in files:
+    total = len(files)
+    for index, filename in enumerate(files, start=1):
         filepath = os.path.join(backup_dir, filename)
         try:
             with open(filepath, "r", encoding="utf-8", errors="replace") as f:
@@ -182,6 +193,10 @@ def scan_backups(backup_dir: str, data_file: str, log_file: str = None) -> set:
                     )
         except (OSError, IOError) as e:
             logger.error("Error reading %s: %s", filename, e)
+
+        if progress_callback:
+            found_new = len(known_blueprints) - initial_count
+            progress_callback(index, total, found_new)
 
     return known_blueprints
 

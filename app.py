@@ -4,6 +4,7 @@ import csv
 import logging
 import os
 import threading
+import time
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
@@ -96,6 +97,13 @@ _pause_event = threading.Event()  # set() = monitoring paused
 _scanning_event = threading.Event()  # set() = backup scan in progress
 last_updated = None
 lock = threading.Lock()
+
+# Heartbeat tracking for browser-close detection
+_last_heartbeat = None
+_heartbeat_lock = threading.Lock()
+
+# Scan progress tracking
+_scan_status = {"current": 0, "total": 0, "found_new": 0}
 
 
 def start_monitoring():
@@ -256,6 +264,7 @@ def get_stats():
             "last_acquired": last_acquired,
             "monitoring_paused": _pause_event.is_set(),
             "is_scanning": _scanning_event.is_set(),
+            "scan_status": dict(_scan_status),
             "last_updated": last_updated or datetime.now().isoformat(),
         }
     )
@@ -271,11 +280,21 @@ def trigger_scan_backups():
         return jsonify({"error": "Scan already in progress"}), 400
 
     _scanning_event.set()
+    _scan_status["current"] = 0
+    _scan_status["total"] = 0
+    _scan_status["found_new"] = 0
+
+    def _on_progress(current, total, found_new):
+        _scan_status["current"] = current
+        _scan_status["total"] = total
+        _scan_status["found_new"] = found_new
 
     def do_scan():
         global last_updated
         try:
-            scan_backups(BACKUP_DIR, DATA_FILE, LOG_FILE)
+            scan_backups(
+                BACKUP_DIR, DATA_FILE, LOG_FILE, progress_callback=_on_progress
+            )
             with lock:
                 last_updated = datetime.now().isoformat()
         except Exception as e:
@@ -391,6 +410,15 @@ def update_settings():
     return jsonify({"status": "ok", "updated": updated})
 
 
+@app.route("/api/heartbeat")
+def heartbeat():
+    """Receive a keep-alive ping from the browser."""
+    global _last_heartbeat
+    with _heartbeat_lock:
+        _last_heartbeat = time.time()
+    return jsonify({"ok": True})
+
+
 @app.errorhandler(404)
 def not_found(e):
     """Handle 404 errors."""
@@ -403,10 +431,36 @@ def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
 
 
-def run_server(port: int) -> None:
+def _start_browser_watchdog(timeout: float = 20.0) -> None:
+    """Exit the process if no heartbeat is received for `timeout` seconds.
+
+    The watchdog only activates after the first heartbeat arrives, so a slow
+    browser open on startup does not trigger a false exit.
+    """
+    import sys
+
+    def watch():
+        while True:
+            time.sleep(5)
+            with _heartbeat_lock:
+                hb = _last_heartbeat
+            if hb is None:
+                continue
+            if time.time() - hb > timeout:
+                logger.info("No browser heartbeat for %.0fs — exiting.", timeout)
+                sys.stdout.flush()
+                os._exit(0)
+
+    t = threading.Thread(target=watch, daemon=True, name="browser-watchdog")
+    t.start()
+
+
+def run_server(port: int, browser_watchdog: bool = False) -> None:
     """Start the Flask server and monitoring thread. Blocks until stopped."""
     if LOG_FILE is not None:
         start_monitoring()
+    if browser_watchdog:
+        _start_browser_watchdog()
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True, use_reloader=False)
 
 
