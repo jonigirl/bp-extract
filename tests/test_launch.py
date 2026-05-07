@@ -144,3 +144,69 @@ class TestMain:
         ):
             launch.main()
         assert exc_info.value.code == 0
+
+
+class TestWatchdogStdoutGuard:
+    def test_launch_watchdog_calls_os_exit_on_stale_heartbeat(self):
+        import time
+
+        import app as app_module
+
+        original_hb = app_module._last_heartbeat
+        mock_thread = MagicMock()
+        mock_thread.is_alive.return_value = True
+
+        try:
+            app_module._last_heartbeat = time.time() - 999
+
+            def fake_exit(code):
+                mock_thread.is_alive.return_value = False
+
+            with (
+                patch("launch.check_python_version"),
+                patch("launch.find_virtual_env", return_value=None),
+                patch("launch.check_flask_installed", return_value=True),
+                patch("launch.find_free_port", return_value=5000),
+                patch("launch.wait_for_port", return_value=True),
+                patch("launch.webbrowser.open"),
+                patch("threading.Thread", return_value=mock_thread),
+                patch("time.sleep", return_value=None),
+                patch("os._exit", side_effect=fake_exit) as mock_exit,
+            ):
+                launch.main()
+            mock_exit.assert_called_once_with(0)
+        finally:
+            app_module._last_heartbeat = original_hb
+
+    def test_launch_watchdog_stdout_guard_with_none_stdout(self):
+        import sys
+        import time
+
+        import app as app_module
+
+        original_hb = app_module._last_heartbeat
+        mock_thread = MagicMock()
+        mock_thread.is_alive.return_value = True
+
+        try:
+            app_module._last_heartbeat = time.time() - 999
+
+            def fake_exit(code):
+                mock_thread.is_alive.return_value = False
+
+            with (
+                patch("launch.check_python_version"),
+                patch("launch.find_virtual_env", return_value=None),
+                patch("launch.check_flask_installed", return_value=True),
+                patch("launch.find_free_port", return_value=5000),
+                patch("launch.wait_for_port", return_value=True),
+                patch("launch.webbrowser.open"),
+                patch("threading.Thread", return_value=mock_thread),
+                patch("time.sleep", return_value=None),
+                patch("os._exit", side_effect=fake_exit) as mock_exit,
+                patch.object(sys, "stdout", None),
+            ):
+                launch.main()
+            mock_exit.assert_called_once_with(0)
+        finally:
+            app_module._last_heartbeat = original_hb

@@ -9,6 +9,8 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
+from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
+
 from config import get_config, get_or_create_secret_key
 from core import (
     get_blueprints_from_json,
@@ -16,9 +18,8 @@ from core import (
     scan_backups,
     tail_log,
 )
-from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
 
-APP_VERSION = "0.4.6"
+APP_VERSION = "0.4.7"
 
 
 def get_base_dir() -> Path:
@@ -447,7 +448,8 @@ def _start_browser_watchdog(timeout: float = 20.0) -> None:
                 continue
             if time.time() - hb > timeout:
                 logger.info("No browser heartbeat for %.0fs — exiting.", timeout)
-                sys.stdout.flush()
+                if sys.stdout is not None:
+                    sys.stdout.flush()
                 os._exit(0)
 
     t = threading.Thread(target=watch, daemon=True, name="browser-watchdog")

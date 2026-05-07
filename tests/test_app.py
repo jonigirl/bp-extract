@@ -205,6 +205,104 @@ class TestExportCsvEndpoint:
         assert lines[0].lower().startswith("blueprint name")
 
 
+class TestHeartbeatEndpoint:
+    def test_returns_200(self, client):
+        response = client.get("/api/heartbeat")
+        assert response.status_code == 200
+        assert response.get_json()["ok"] is True
+
+    def test_updates_last_heartbeat(self, client):
+        import time
+
+        before = time.time()
+        client.get("/api/heartbeat")
+        with app_module._heartbeat_lock:
+            hb = app_module._last_heartbeat
+        assert hb is not None
+        assert hb >= before
+
+
+class TestBrowserWatchdog:
+    def test_exits_when_heartbeat_expires(self):
+        import threading
+        import time
+
+        import app as app_module
+
+        original_hb = app_module._last_heartbeat
+        called = threading.Event()
+
+        def fake_exit(code):
+            called.set()
+            raise SystemExit(code)
+
+        try:
+            app_module._last_heartbeat = time.time() - 999
+            with (
+                patch.object(app_module.time, "sleep", return_value=None),
+                patch.object(app_module.os, "_exit", side_effect=fake_exit),
+            ):
+                app_module._start_browser_watchdog(timeout=0.01)
+                assert called.wait(timeout=2.0), "watchdog did not fire"
+        finally:
+            app_module._last_heartbeat = original_hb
+
+    def test_does_not_exit_before_first_heartbeat(self):
+        import threading
+
+        import app as app_module
+
+        original_hb = app_module._last_heartbeat
+        exited = threading.Event()
+        enough_polls = threading.Event()
+        call_count = [0]
+
+        def fake_sleep(n):
+            call_count[0] += 1
+            if call_count[0] >= 5:
+                enough_polls.set()
+
+        try:
+            app_module._last_heartbeat = None
+            with (
+                patch.object(app_module.time, "sleep", side_effect=fake_sleep),
+                patch.object(
+                    app_module.os, "_exit", side_effect=lambda c: exited.set()
+                ),
+            ):
+                app_module._start_browser_watchdog(timeout=0.01)
+                enough_polls.wait(timeout=2.0)
+            assert not exited.is_set()
+        finally:
+            app_module._last_heartbeat = original_hb
+
+    def test_flush_skipped_when_stdout_is_none(self):
+        import sys
+        import threading
+        import time
+
+        import app as app_module
+
+        original_hb = app_module._last_heartbeat
+        called = threading.Event()
+
+        def fake_exit(code):
+            called.set()
+            raise SystemExit(code)
+
+        try:
+            app_module._last_heartbeat = time.time() - 999
+            with (
+                patch.object(app_module.time, "sleep", return_value=None),
+                patch.object(app_module.os, "_exit", side_effect=fake_exit),
+                patch.object(sys, "stdout", None),
+            ):
+                app_module._start_browser_watchdog(timeout=0.01)
+                assert called.wait(timeout=2.0), "watchdog crashed with stdout=None"
+        finally:
+            app_module._last_heartbeat = original_hb
+
+
 class TestErrorHandlers:
     def test_404_returns_json_error(self, client):
         response = client.get("/api/this/does/not/exist")
