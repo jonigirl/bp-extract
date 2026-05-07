@@ -156,7 +156,8 @@ def main():
                 continue
             if time.time() - hb > _watchdog_timeout:
                 print("\nNo browser heartbeat — shutting down.")
-                sys.stdout.flush()
+                if sys.stdout is not None:
+                    sys.stdout.flush()
                 os._exit(0)
     except KeyboardInterrupt:
         print("\n\nShutting down BP Extract...")
