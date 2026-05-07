@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BP Extract - Blueprint Tracker</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.cdnfonts.com/css/atkinson-hyperlegible"
+    />
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/opendyslexic" />
     <link
       rel="stylesheet"
@@ -23,7 +27,44 @@
             >● Monitoring</span
           >
         </div>
+        <button
+          id="font-toggle-btn"
+          class="font-toggle-btn"
+          aria-label="Switch to OpenDyslexic font"
+          title="Toggle accessible font"
+        >
+          Aa
+        </button>
       </header>
+      <script>
+        (function () {
+          const btn = document.getElementById("font-toggle-btn");
+          const PREF_KEY = "bp_extract_font";
+          function applyFont(pref) {
+            document.body.classList.toggle("od-mode", pref === "opendyslexic");
+            btn.setAttribute(
+              "aria-label",
+              pref === "opendyslexic"
+                ? "Switch to Atkinson Hyperlegible font"
+                : "Switch to OpenDyslexic font",
+            );
+            btn.setAttribute(
+              "title",
+              pref === "opendyslexic"
+                ? "Font: OpenDyslexic (click to switch)"
+                : "Font: Atkinson Hyperlegible (click to switch)",
+            );
+          }
+          applyFont(localStorage.getItem(PREF_KEY) || "atkinson");
+          btn.addEventListener("click", function () {
+            const next = document.body.classList.contains("od-mode")
+              ? "atkinson"
+              : "opendyslexic";
+            localStorage.setItem(PREF_KEY, next);
+            applyFont(next);
+          });
+        })();
+      </script>
 
       <!-- Scan Progress Banner -->
       <div

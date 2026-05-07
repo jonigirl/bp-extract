@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BP Extract — First Run Setup</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.cdnfonts.com/css/atkinson-hyperlegible"
+    />
     <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/opendyslexic" />
     <link
       rel="stylesheet"
@@ -31,14 +35,14 @@
       .setup-header h1 {
         font-size: 28px;
         margin-bottom: 10px;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
       }
 
       .setup-header p {
         font-size: 0.88rem;
         line-height: 1.75;
         color: rgba(255, 255, 255, 0.9);
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
       }
 
       .step-label {
@@ -46,7 +50,7 @@
         font-weight: 600;
         color: rgba(255, 255, 255, 0.7);
         margin-bottom: 8px;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
       }
 
       .setup-card {
@@ -62,7 +66,7 @@
         font-size: 18px;
         margin-bottom: 20px;
         color: var(--text-primary);
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         padding-bottom: 12px;
         border-bottom: 1px solid var(--border-color);
       }
@@ -78,7 +82,7 @@
       .field-group label {
         display: block;
         font-size: 0.82rem;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         color: var(--text-secondary);
         margin-bottom: 6px;
       }
@@ -91,7 +95,7 @@
         color: var(--text-primary);
         border-radius: 8px;
         font-size: 1rem;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         line-height: 1.65;
         transition: border-color 0.3s ease;
       }
@@ -104,7 +108,7 @@
 
       .field-hint {
         font-size: 0.82rem;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         color: var(--text-secondary);
         line-height: 1.75;
         margin-top: 5px;
@@ -119,7 +123,7 @@
         border: none;
         border-radius: 2px;
         font-size: 1rem;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         font-weight: 600;
         cursor: pointer;
         transition:
@@ -135,7 +139,7 @@
 
       .confirm-note {
         font-size: 0.82rem;
-        font-family: "OpenDyslexic", sans-serif;
+        font-family: "Atkinson Hyperlegible", sans-serif;
         color: var(--text-secondary);
         line-height: 1.75;
         margin-top: 14px;
@@ -219,5 +223,11 @@
         <p>BP Extract v{{ version }}</p>
       </footer>
     </div>
+    <script>
+      (function () {
+        var pref = localStorage.getItem("bp_extract_font");
+        if (pref === "opendyslexic") document.body.classList.add("od-mode");
+      })();
+    </script>
   </body>
 </html>
