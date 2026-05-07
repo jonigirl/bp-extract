@@ -24,7 +24,7 @@
 
 body {
   font-family:
-    "OpenDyslexic",
+    "Atkinson Hyperlegible",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -34,6 +34,16 @@ body {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.65;
+}
+
+body.od-mode {
+  font-family:
+    "OpenDyslexic",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 input,
@@ -47,6 +57,25 @@ textarea {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+/* Font toggle button */
+.font-toggle-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.font-toggle-btn:hover,
+.font-toggle-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.25);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* Header */

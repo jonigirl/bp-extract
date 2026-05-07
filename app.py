@@ -9,8 +9,6 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 
-from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
-
 from config import get_config, get_or_create_secret_key
 from core import (
     get_blueprints_from_json,
@@ -18,8 +16,9 @@ from core import (
     scan_backups,
     tail_log,
 )
+from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
 
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.4.6"
 
 
 def get_base_dir() -> Path:
